@@ -483,7 +483,6 @@ checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
  "hashbrown",
- "rayon",
 ]
 
 [[package]]
@@ -725,12 +724,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26c613f0f566526a647c7473f6a8556dbce22c91b13485ee4b4ec7ab648e4973"
 dependencies = [
  "bitvec",
- "crossbeam-channel",
  "filetime",
  "indexmap",
  "libdeflater",
  "log",
- "rayon",
  "rgb",
  "rustc-hash",
  "zopfli",
