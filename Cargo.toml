@@ -1,6 +1,10 @@
+[toolchain]
+channel = "1.95.0"
+
 [package]
 name = "squash"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+libcaesium = "0.20.3"
