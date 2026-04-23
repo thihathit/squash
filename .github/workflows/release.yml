@@ -53,11 +53,15 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Rename artifact
+        shell: bash
+        run: mv target/${{ matrix.target }}/release/${{ matrix.artifact_name }} target/${{ matrix.target }}/release/${{ matrix.asset_name }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.asset_name }}
 
   release:
     needs: build
@@ -87,10 +91,16 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create release and upload assets
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create ${{ github.event.inputs.version }} \
-            --title "Release ${{ github.event.inputs.version }}" \
-            artifacts/**/*
+        run: gh release create ${{ github.event.inputs.version }} --title "${{ github.event.inputs.version }}"
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+            repo_token: ${{ secrets.GITHUB_TOKEN }}
+            file: artifacts/*/*
+            tag: ${{ github.event.inputs.version }}
+            overwrite: true
+            file_glob: true
