@@ -8,3 +8,4 @@ edition = "2024"
 
 [dependencies]
 libcaesium = { version = "0.20.3", default-features = false, features = ["jpg", "png", "webp", "gif", "tiff"] }
+rayon = "1.10"

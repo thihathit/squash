@@ -882,6 +882,7 @@ name = "squash"
 version = "0.1.0"
 dependencies = [
  "libcaesium",
+ "rayon",
 ]
 
 [[package]]
