@@ -7,5 +7,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+gpui = "0.2.2"
 libcaesium = { version = "0.20.3", default-features = false, features = ["jpg", "png", "webp", "gif", "tiff"] }
 rayon = "1.10"

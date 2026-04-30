@@ -1,57 +1,26 @@
-use caesium::compress;
-use caesium::parameters::CSParameters;
-use rayon::prelude::*;
-use std::error::Error;
-use std::fs;
+mod app;
+mod theme;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut parameters = CSParameters::new();
+use gpui::{
+    Application, Bounds, WindowBackgroundAppearance, WindowBounds, WindowOptions, prelude::*, px,
+    size,
+};
 
-    parameters.gif.quality = 100;
-    parameters.png.optimize = true;
-    parameters.jpeg.optimize = true;
-    parameters.webp.lossless = true;
+fn main() {
+    Application::new().run(|cx| {
+        let bounds = Bounds::centered(None, size(px(500.), px(500.0)), cx);
+        cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                window_background: WindowBackgroundAppearance::Blurred,
+                ..Default::default()
+            },
+            |_, cx| {
+                let element = app::element();
 
-    let files = fs::read_dir("./")?;
-
-    let images: Vec<_> = files
-        .filter_map(|file| match file {
-            Ok(file) => {
-                let path = file.path();
-
-                if path.is_file() {
-                    let valid = path.extension().map_or(false, |ext| {
-                        ext.eq_ignore_ascii_case("jpg")
-                            || ext.eq_ignore_ascii_case("jpeg")
-                            || ext.eq_ignore_ascii_case("png")
-                            || ext.eq_ignore_ascii_case("gif")
-                            || ext.eq_ignore_ascii_case("webp")
-                            || ext.eq_ignore_ascii_case("tiff")
-                    });
-
-                    if valid {
-                        return Some(file);
-                    }
-                }
-
-                None
-            }
-            Err(_) => None,
-        })
-        .collect();
-
-    images.par_iter().for_each(|file| {
-        let name = file.file_name().display().to_string();
-        let target = file.path().to_string_lossy().to_string();
-        let input = target.clone();
-        let output = target.clone();
-
-        if let Err(e) = compress(input, output, &parameters) {
-            eprintln!("Failed to compress {}: {}", name, e);
-        } else {
-            println!("Compressed: {}", name);
-        }
+                cx.new(|_| element)
+            },
+        )
+        .unwrap();
     });
-
-    Ok(())
 }
