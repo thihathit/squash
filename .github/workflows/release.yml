@@ -18,8 +18,8 @@ jobs:
         include:
           - os: ubuntu-latest
             os_dep: |
-              sudo apt-get update
-              sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libxkbcommon-x11-dev
+               sudo apt-get update
+               sudo apt-get install -y pkg-config libfontconfig1-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libxkbcommon-x11-dev
             target: x86_64-unknown-linux-gnu
             artifact_name: squash
             asset_name: squash-linux-x86_64
