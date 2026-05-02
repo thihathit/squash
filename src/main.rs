@@ -1,8 +1,13 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod compression;
+mod dropzone;
+mod preview;
 mod root;
 mod theme;
+mod types;
+mod utilities;
 
 use app::app;
 

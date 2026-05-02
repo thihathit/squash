@@ -1,22 +1,29 @@
-use gpui::{Context, Window, WindowAppearance, div, prelude::*};
+use crate::{
+    dropzone::DropZone,
+    theme::{ThemeValues, get_theme},
+};
+use gpui::{Context, Entity, Window, div, prelude::*};
 
-use crate::theme::APP_THEME;
+pub struct Root {
+    dropzone: Entity<DropZone>,
+    theme: ThemeValues,
+}
 
-pub struct Root {}
+impl Root {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let theme = get_theme(cx);
+        let dropzone = cx.new(|new_cx| DropZone::new(new_cx));
+
+        Self { dropzone, theme }
+    }
+}
 
 impl Render for Root {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let appearance = cx.window_appearance();
-
-        let theme = match appearance {
-            WindowAppearance::Dark => APP_THEME.dark,
-            WindowAppearance::Light => APP_THEME.light,
-            _ => APP_THEME.default,
-        };
-
+    fn render(&mut self, _window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
-            .text_color(theme.base_text_color)
-            .bg(theme.base_color)
+            .bg(self.theme.app_bg)
+            .text_color(self.theme.base_text_color)
+            .child(self.dropzone.clone())
     }
 }
