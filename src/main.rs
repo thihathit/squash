@@ -3,6 +3,7 @@
 mod app;
 mod compression;
 mod dropzone;
+mod gpui_components;
 mod preview;
 mod root;
 mod theme;
