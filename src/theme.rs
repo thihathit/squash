@@ -1,11 +1,13 @@
 use gpui::{App, Hsla, WindowAppearance};
 
 pub struct ThemeValues {
+    pub white: Hsla,
     pub transparent: Hsla,
 
     pub app_bg: Hsla,
     pub dropzone_active: Hsla,
     pub file_bg_sequence_1: Hsla,
+    pub status_bar_bg: Hsla,
 
     pub base_text_color: Hsla,
     pub secondary_text_color: Hsla,
@@ -24,6 +26,12 @@ pub struct Theme {
 }
 
 const DARK_THEME: ThemeValues = ThemeValues {
+    white: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 1.0,
+        a: 1.0,
+    },
     transparent: Hsla {
         h: 0.0,
         s: 0.0,
@@ -41,7 +49,13 @@ const DARK_THEME: ThemeValues = ThemeValues {
         h: 0.0,
         s: 0.0,
         l: 0.0,
-        a: 0.3,
+        a: 0.1,
+    },
+    status_bar_bg: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 1.0,
+        a: 0.075,
     },
     file_bg_sequence_1: Hsla {
         h: 0.0,
@@ -91,6 +105,12 @@ const DARK_THEME: ThemeValues = ThemeValues {
 };
 
 const LIGHT_THEME: ThemeValues = ThemeValues {
+    white: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 1.0,
+        a: 1.0,
+    },
     transparent: Hsla {
         h: 0.0,
         s: 0.0,
@@ -108,7 +128,13 @@ const LIGHT_THEME: ThemeValues = ThemeValues {
         h: 0.0,
         s: 0.0,
         l: 1.0,
-        a: 0.3,
+        a: 0.1,
+    },
+    status_bar_bg: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 0.0,
+        a: 0.051,
     },
     file_bg_sequence_1: Hsla {
         h: 0.0,
@@ -170,5 +196,13 @@ pub fn get_theme(cx: &App) -> ThemeValues {
         WindowAppearance::Dark => APP_THEME.dark,
         WindowAppearance::Light => APP_THEME.light,
         _ => APP_THEME.default,
+    }
+}
+
+pub fn get_logo(cx: &App) -> String {
+    match cx.window_appearance() {
+        WindowAppearance::Dark => "logo-1.png".to_owned(),
+        WindowAppearance::Light => "logo-2.png".to_owned(),
+        _ => "logo-2.png".to_owned(),
     }
 }

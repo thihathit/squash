@@ -5314,6 +5314,7 @@ dependencies = [
  "instant",
  "libcaesium",
  "rayon",
+ "smallvec",
 ]
 
 [[package]]
