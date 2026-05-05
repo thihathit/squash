@@ -1,1 +1,0 @@
-WAYLAND_DISPLAY= cargo run

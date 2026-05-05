@@ -13,9 +13,9 @@ impl PathFormatter {
         Self { path }
     }
 
-    pub fn full_path(&self) -> String {
-        self.path.display().to_string()
-    }
+    // pub fn full_path(&self) -> String {
+    //     self.path.display().to_string()
+    // }
 
     pub fn file_name(&self) -> String {
         self.path

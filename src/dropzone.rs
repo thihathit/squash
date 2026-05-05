@@ -1,11 +1,14 @@
-use std::path::PathBuf;
+use std::{ops::Range, path::PathBuf};
 
 use gpui::{
     Context, DragMoveEvent, Entity, ExternalPaths, FontWeight, TextAlign, Window, div, prelude::*,
+    uniform_list,
 };
 
+use futures::channel::oneshot::channel;
+
 use crate::{
-    compression::VALID_EXTENSIONS,
+    compression::{VALID_EXTENSIONS, compress_image},
     preview::Preview,
     theme::{ThemeValues, get_theme},
 };
@@ -45,7 +48,42 @@ impl DropZone {
     }
 
     fn push_file(&mut self, path: &PathBuf, index: usize, cx: &mut Context<Self>) {
-        let preview = cx.new(|new_cx| Preview::new(new_cx, path.clone(), 0, index));
+        let preview = cx.new(|new_cx| {
+            let entity = Preview::new(new_cx, path.to_owned(), true, index);
+            let image_path = path.to_owned();
+
+            let new_thread = new_cx.spawn(async move |current_entity, thread_cx| {
+                // We use a "oneshot" channel to bridge the Thread -> Async gap
+                let (tx, rx) = channel();
+
+                // Offload the single-threaded function to Rayon's work-stealing pool
+                rayon::spawn(move || {
+                    let result = compress_image(image_path).ok();
+
+                    tx.send(result).ok();
+                });
+
+                // Wait for Rayon to finish. This YIELDS the thread.
+                let result = rx.await;
+
+                match result {
+                    Ok(Some(byte)) => current_entity.update(thread_cx, |this, this_cx| {
+                        this.set_compressed_bytes(byte, this_cx);
+                        this.set_processing(false, this_cx)
+                    }),
+                    // Accounts for:
+                    // - thread crash
+                    // - failed to compress
+                    _ => current_entity
+                        .update(thread_cx, |this, this_cx| this.set_error(true, this_cx)),
+                }
+            });
+
+            new_thread.detach();
+
+            entity
+        });
+
         let file = FileInfo {
             path: path.clone(),
             preview,
@@ -83,13 +121,14 @@ impl DropZone {
 
 impl Render for DropZone {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let bg = self.theme.dropzone_active;
         let is_dragging = self.state.has_active_drag;
+        let state_files = &self.state.files;
 
-        let zone = match self.state.files.is_empty() {
-            true => div()
+        let zone = div().size_full().map(|el| match state_files.is_empty() {
+            true => el
                 .flex()
                 .p_3()
-                .size_full()
                 .justify_center()
                 .items_center()
                 .gap_1()
@@ -101,13 +140,23 @@ impl Render for DropZone {
                     false => "Drag & Drop your files here",
                 }),
             false => {
-                let previews = self.state.files.iter().map(|file| &file.preview);
+                let item_count = state_files.iter().len();
 
-                div().children(previews.cloned())
+                let previews = uniform_list(
+                    "file-list",
+                    item_count,
+                    cx.processor(|this, range: Range<usize>, _, _| {
+                        range
+                            .map(|i| this.state.files[i].preview.to_owned())
+                            .collect()
+                    }),
+                )
+                .size_full()
+                .into_any_element();
+
+                el.child(previews)
             }
-        };
-
-        let bg = self.theme.dropzone_active;
+        });
 
         div()
             .size_full()

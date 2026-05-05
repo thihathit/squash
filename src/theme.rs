@@ -10,6 +10,8 @@ pub struct ThemeValues {
     pub base_text_color: Hsla,
     pub secondary_text_color: Hsla,
 
+    pub progress_color: Hsla,
+
     pub warning_text_color: Hsla,
     pub danger_text_color: Hsla,
     pub success_text_color: Hsla,
@@ -60,6 +62,14 @@ const DARK_THEME: ThemeValues = ThemeValues {
         l: 0.596,
         a: 1.0,
     },
+
+    progress_color: Hsla {
+        h: 0.6,
+        s: 0.74,
+        l: 0.51,
+        a: 1.0,
+    },
+
     warning_text_color: Hsla {
         h: 0.152777778,
         s: 0.69,
@@ -92,7 +102,7 @@ const LIGHT_THEME: ThemeValues = ThemeValues {
         h: 0.0,
         s: 0.0,
         l: 1.0,
-        a: 0.7,
+        a: 0.85,
     },
     dropzone_active: Hsla {
         h: 0.0,
@@ -104,7 +114,7 @@ const LIGHT_THEME: ThemeValues = ThemeValues {
         h: 0.0,
         s: 0.0,
         l: 0.0,
-        a: 0.05,
+        a: 0.051,
     },
 
     base_text_color: Hsla {
@@ -119,6 +129,14 @@ const LIGHT_THEME: ThemeValues = ThemeValues {
         l: 0.502,
         a: 1.0,
     },
+
+    progress_color: Hsla {
+        h: 0.6,
+        s: 0.82,
+        l: 0.45,
+        a: 1.0,
+    },
+
     danger_text_color: Hsla {
         h: 0.0,
         s: 0.62,

@@ -8,12 +8,13 @@
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    Animation, AnimationExt as _, AnyElement, App, ElementId, Hsla, InteractiveElement as _,
-    IntoElement, ParentElement, Pixels, RenderOnce, StyleRefinement, Styled, Window, canvas,
-    ease_in_out, px, relative,
+    Animation, AnimationExt as _, AnyElement, App, Bounds, ElementId, Hsla,
+    InteractiveElement as _, IntoElement, ParentElement, Path, PathBuilder, Pixels, RenderOnce,
+    StyleRefinement, Styled, Window, canvas, ease_in_out, px, relative,
 };
-use gpui::{Bounds, Path, PathBuilder, div, point};
+use gpui::{Refineable, div, point};
 use instant::Duration;
+use std::cell::Cell;
 use std::f32::consts::TAU;
 
 // ============================================================================
@@ -41,7 +42,7 @@ impl From<Pixels> for Size {
 // ============================================================================
 
 pub trait Sizable: Sized {
-    fn with_size(mut self, size: impl Into<Size>) -> Self;
+    fn with_size(self, size: impl Into<Size>) -> Self;
 
     fn xsmall(self) -> Self {
         self.with_size(Size::XSmall)
@@ -73,17 +74,13 @@ impl<E: Styled> StyledExt for E {}
 // ProgressState - shared state for progress components with animation support
 // ============================================================================
 
-use std::cell::Cell;
-
 pub struct ProgressState {
-    pub(crate) value: f32,
     target: Cell<f32>,
 }
 
 impl ProgressState {
     pub(crate) fn new(value: f32) -> Self {
         Self {
-            value,
             target: Cell::new(value),
         }
     }
@@ -151,15 +148,6 @@ impl Arc {
     pub fn outer_radius(mut self, outer_radius: f32) -> Self {
         self.outer_radius = outer_radius;
         self
-    }
-
-    pub fn centroid<T>(&self, arc: &ArcData<T>) -> gpui::Point<f32> {
-        let start_angle = arc.start_angle - HALF_PI;
-        let end_angle = arc.end_angle - HALF_PI;
-        let r = (self.inner_radius + self.outer_radius) / 2.;
-        let a = (start_angle + end_angle) / 2.;
-
-        point(r * a.cos(), r * a.sin())
     }
 
     fn path<T>(
@@ -467,16 +455,6 @@ impl RenderOnce for ProgressCircle {
                     state.read(cx).set_target(value);
 
                     let duration = Duration::from_secs_f64(0.15);
-                    cx.spawn({
-                        let state = state.clone();
-                        async move |cx| {
-                            cx.background_executor().timer(duration).await;
-                            _ = state.update(cx, |this, _| {
-                                this.value = this.target();
-                            });
-                        }
-                    })
-                    .detach();
 
                     this.with_animation(
                         format!("progress-circle-{}", from),
