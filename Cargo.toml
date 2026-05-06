@@ -5,6 +5,8 @@ channel = "1.95.9"
 name = "squash"
 version = "0.1.0"
 edition = "2024"
+authors = ["Thiha <git@thiha.dev>"]
+repository = "https://github.com/thihathit/squash"
 
 [dependencies]
 anyhow = "1.0.102"
@@ -17,3 +19,8 @@ instant = "0.1.13"
 libcaesium = { version = "0.20.3", default-features = false, features = ["jpg", "png", "webp", "gif", "tiff"] }
 rayon = "1.10"
 smallvec = "1.15.1"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
