@@ -8,6 +8,7 @@ mod gpui_components;
 mod preview;
 mod root;
 mod theme;
+mod topbar;
 mod types;
 
 #[expect(dead_code)]
