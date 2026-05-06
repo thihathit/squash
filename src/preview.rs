@@ -123,27 +123,28 @@ impl Render for Preview {
 
         let icon = svg().size_full();
 
-        let status_indicator =
-            div()
-                .size_3()
-                .flex_shrink_0()
-                .map(|el| match (is_processing, is_error, is_smaller) {
-                    (true, _, _) => el.child(
-                        ProgressCircle::new("circle")
-                            .size_full()
-                            .color(progress_color)
-                            .loading(true),
-                    ),
-                    (false, false, true) => {
-                        el.child(icon.text_color(status_success).path("compress-success.svg"))
-                    }
-                    (false, false, false) => {
-                        el.child(icon.text_color(status_warning).path("compress-warning.svg"))
-                    }
-                    _ => el.child(icon.text_color(status_danger).path("compress-danger.svg")),
-                });
+        let status_indicator = div()
+            .id("Preview:status_indicator")
+            .size_3()
+            .flex_shrink_0()
+            .map(|el| match (is_processing, is_error, is_smaller) {
+                (true, _, _) => el.child(
+                    ProgressCircle::new("Preview:progress")
+                        .size_full()
+                        .color(progress_color)
+                        .loading(true),
+                ),
+                (false, false, true) => {
+                    el.child(icon.text_color(status_success).path("compress-success.svg"))
+                }
+                (false, false, false) => {
+                    el.child(icon.text_color(status_warning).path("compress-warning.svg"))
+                }
+                _ => el.child(icon.text_color(status_danger).path("compress-danger.svg")),
+            });
 
         let thumbnail = div()
+            .id("Preview:thumbnail")
             .w_8()
             .h_8()
             .flex_shrink_0()
@@ -153,6 +154,7 @@ impl Render for Preview {
             .child(img(src).size_full().object_fit(ObjectFit::Cover));
 
         let filename = div()
+            .id("Preview:filename")
             .flex_1()
             .min_w_0()
             .overflow_x_hidden()
@@ -161,6 +163,7 @@ impl Render for Preview {
             .child(name);
 
         let compression_result = div()
+            .id("Preview:compression_result")
             .flex_shrink_0()
             .flex()
             .flex_row()
@@ -181,6 +184,7 @@ impl Render for Preview {
             });
 
         let left_side = div()
+            .id("Preview:left")
             .flex_1()
             .min_w_0()
             .flex()
@@ -191,9 +195,13 @@ impl Render for Preview {
             .child(thumbnail)
             .child(filename);
 
-        let right_side = div().text_color(right_text_color).child(compression_result);
+        let right_side = div()
+            .id("Preview:right")
+            .text_color(right_text_color)
+            .child(compression_result);
 
         let container = div()
+            .id("Preview")
             .w_full()
             .flex()
             .flex_row()

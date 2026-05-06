@@ -125,40 +125,44 @@ impl Render for DropZone {
         let is_dragging = self.state.has_active_drag;
         let state_files = &self.state.files;
 
-        let zone = div().size_full().map(|el| match state_files.is_empty() {
-            true => el
-                .flex()
-                .p_3()
-                .justify_center()
-                .items_center()
-                .gap_1()
-                .text_lg()
-                .text_align(TextAlign::Center)
-                .font_weight(FontWeight::MEDIUM)
-                .child(match is_dragging {
-                    true => "Drop your files here",
-                    false => "Drag & Drop your files here",
-                }),
-            false => {
-                let item_count = state_files.iter().len();
-
-                let previews = uniform_list(
-                    "file-list",
-                    item_count,
-                    cx.processor(|this, range: Range<usize>, _, _| {
-                        range
-                            .map(|i| this.state.files[i].preview.to_owned())
-                            .collect()
+        let zone = div()
+            .id("DropZone:zone")
+            .size_full()
+            .map(|el| match state_files.is_empty() {
+                true => el
+                    .flex()
+                    .p_3()
+                    .justify_center()
+                    .items_center()
+                    .gap_1()
+                    .text_lg()
+                    .text_align(TextAlign::Center)
+                    .font_weight(FontWeight::MEDIUM)
+                    .child(match is_dragging {
+                        true => "Drop your files here",
+                        false => "Drag & Drop your files here",
                     }),
-                )
-                .size_full()
-                .into_any_element();
+                false => {
+                    let item_count = state_files.iter().len();
 
-                el.child(previews)
-            }
-        });
+                    let previews = uniform_list(
+                        "TopBar:file-list",
+                        item_count,
+                        cx.processor(|this, range: Range<usize>, _, _| {
+                            range
+                                .map(|i| this.state.files[i].preview.to_owned())
+                                .collect()
+                        }),
+                    )
+                    .size_full()
+                    .into_any_element();
+
+                    el.child(previews)
+                }
+            });
 
         div()
+            .id("DropZone")
             .size_full()
             .bg(self.theme.transparent)
             .drag_over::<ExternalPaths>(move |style, _, _, _| style.bg(bg))
