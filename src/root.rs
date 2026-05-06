@@ -2,7 +2,7 @@ use crate::{
     dropzone::DropZone,
     theme::{ThemeValues, get_logo, get_theme},
 };
-use gpui::{Context, Entity, MouseButton, Window, div, img, prelude::*, svg};
+use gpui::{Context, Entity, Window, WindowControlArea, div, img, prelude::*, svg};
 
 pub struct Root {
     dropzone: Entity<DropZone>,
@@ -25,10 +25,11 @@ impl Root {
 }
 
 impl Render for Root {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let logo = div().pl_2p5().child(img(self.logo.to_owned()).w_5());
 
         let close = div()
+            .id("top-bar-close")
             .px_2p5()
             .py_2()
             .child(
@@ -37,23 +38,34 @@ impl Render for Root {
                     .text_color(self.theme.white.to_owned())
                     .path("cross.svg"),
             )
+            .occlude()
             .cursor_pointer()
             .hover(|this| this.bg(self.theme.danger_text_color))
-            .on_mouse_up(
-                MouseButton::Left,
-                cx.listener(|_, _, _, ev_cx| ev_cx.quit()),
-            );
+            .window_control_area(WindowControlArea::Close);
 
-        let top_bar = div()
+        let window_control = div()
+            .size_full()
+            .absolute()
+            .top_0()
+            .left_0()
+            .cursor_grab()
+            .bg(self.theme.status_bar_bg)
+            .window_control_area(WindowControlArea::Drag);
+
+        let top_bar_contents = div()
             .w_full()
             .flex()
             .gap_1()
-            .cursor_grab()
             .items_center()
             .justify_between()
-            .bg(self.theme.status_bar_bg)
             .child(logo)
             .child(close);
+
+        let top_bar = div()
+            .w_full()
+            .relative()
+            .child(window_control)
+            .child(top_bar_contents);
 
         div()
             .size_full()
