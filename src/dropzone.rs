@@ -56,8 +56,8 @@ impl DropZone {
                 // We use a "oneshot" channel to bridge the Thread -> Async gap
                 let (tx, rx) = channel();
 
-                // Offload the single-threaded function to Rayon's work-stealing pool
-                rayon::spawn(move || {
+                // Offload to a dedicated thread instead of Rayon's persistent pool
+                std::thread::spawn(move || {
                     let result = compress_image(image_path).ok();
 
                     tx.send(result).ok();

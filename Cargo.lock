@@ -5313,7 +5313,6 @@ dependencies = [
  "include_dir",
  "instant",
  "libcaesium",
- "rayon",
  "smallvec",
 ]
 
