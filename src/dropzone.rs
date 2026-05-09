@@ -48,41 +48,40 @@ impl DropZone {
     }
 
     fn push_file(&mut self, path: &PathBuf, index: usize, cx: &mut Context<Self>) {
-        let preview = cx.new(|new_cx| {
-            let entity = Preview::new(new_cx, path.to_owned(), true, index);
-            let image_path = path.to_owned();
+        let preview = cx.new(|new_cx| Preview::new(new_cx, path.to_owned(), true, index));
 
-            let new_thread = new_cx.spawn(async move |current_entity, thread_cx| {
-                // We use a "oneshot" channel to bridge the Thread -> Async gap
-                let (tx, rx) = channel();
+        let image_path = path.to_owned();
 
-                // Offload the single-threaded function to Rayon's work-stealing pool
-                rayon::spawn(move || {
-                    let result = compress_image(image_path).ok();
+        let preview_entity = preview.clone();
 
-                    tx.send(result).ok();
-                });
+        let thread = cx.spawn(async move |_this, thread_cx| {
+            // We use a "oneshot" channel to bridge the Thread -> Async gap
+            let (tx, rx) = channel();
 
-                // Wait for Rayon to finish. This YIELDS the thread.
-                let result = rx.await;
+            // Offload the single-threaded function to Rayon's work-stealing pool
+            rayon::spawn(move || {
+                let result = compress_image(image_path).ok();
 
-                match result {
-                    Ok(Some(byte)) => current_entity.update(thread_cx, |this, this_cx| {
-                        this.set_compressed_bytes(byte, this_cx);
-                        this.set_processing(false, this_cx)
-                    }),
-                    // Accounts for:
-                    // - thread crash
-                    // - failed to compress
-                    _ => current_entity
-                        .update(thread_cx, |this, this_cx| this.set_error(true, this_cx)),
-                }
+                tx.send(result).ok();
             });
 
-            new_thread.detach();
+            // Wait for Rayon to finish. This YIELDS the thread.
+            let result = rx.await;
 
-            entity
+            match result {
+                Ok(Some(byte)) => preview_entity.update(thread_cx, |this, this_cx| {
+                    this.set_compressed_bytes(byte, this_cx);
+                    this.set_processing(false, this_cx)
+                }),
+                // Accounts for:
+                // - thread crash
+                // - failed to compress
+                _ => {
+                    preview_entity.update(thread_cx, |this, this_cx| this.set_error(true, this_cx))
+                }
+            }
         });
+        thread.detach();
 
         let file = FileInfo {
             path: path.clone(),
