@@ -1,8 +1,8 @@
 use std::{ops::Range, path::PathBuf};
 
 use gpui::{
-    Context, DragMoveEvent, Entity, ExternalPaths, FontWeight, TextAlign, Window, div, prelude::*,
-    uniform_list,
+    Context, Div, DragMoveEvent, Entity, ExternalPaths, FontWeight, MouseButton, Stateful,
+    TextAlign, Window, div, prelude::*, svg, uniform_list,
 };
 
 use futures::channel::oneshot::channel;
@@ -92,6 +92,11 @@ impl DropZone {
         cx.notify();
     }
 
+    fn clear_files(&mut self, cx: &mut Context<Self>) {
+        self.state.files.clear();
+        cx.notify();
+    }
+
     fn filter_paths(&self, paths: &[PathBuf]) -> Vec<PathBuf> {
         paths
             .iter()
@@ -116,6 +121,27 @@ impl DropZone {
             })
             .collect()
     }
+
+    fn clear_button_wrapper(&self) -> Div {
+        div().flex().w_full().py_4().justify_center()
+    }
+
+    fn clear_button(&self, id: String) -> Stateful<Div> {
+        div()
+            .id(id)
+            .rounded_full()
+            .p_4()
+            .cursor_pointer()
+            .shadow_md()
+            .bg(self.theme.btn_1_bg_color.to_owned())
+            .hover(|this| this.bg(self.theme.btn_1_hover_bg_color.to_owned()))
+            .child(
+                svg()
+                    .size_5()
+                    .text_color(self.theme.btn_1_text_color.to_owned())
+                    .path("brush.svg"),
+            )
+    }
 }
 
 impl Render for DropZone {
@@ -126,7 +152,7 @@ impl Render for DropZone {
 
         let zone = div()
             .id("DropZone:zone")
-            .size_full()
+            .flex_1()
             .map(|el| match state_files.is_empty() {
                 true => el
                     .flex()
@@ -160,6 +186,23 @@ impl Render for DropZone {
                 }
             });
 
+        let clear_button_wrapper = self
+            .clear_button_wrapper()
+            .child(self.clear_button("DropZone:clear_button_wrapper".to_owned()))
+            .invisible();
+        let clear_button = self
+            .clear_button_wrapper()
+            .absolute()
+            .bottom_0()
+            .left_0()
+            .child(
+                self.clear_button("DropZone:clear_button".to_owned())
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, ev_cx| this.clear_files(ev_cx)),
+                    ),
+            );
+
         div()
             .id("DropZone")
             .size_full()
@@ -179,6 +222,11 @@ impl Render for DropZone {
 
                 this.set_active_drag(false, cx);
             }))
+            .relative()
+            .flex()
+            .flex_col()
             .child(zone)
+            .child(clear_button_wrapper)
+            .child(clear_button)
     }
 }

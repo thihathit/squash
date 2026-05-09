@@ -17,6 +17,10 @@ pub struct ThemeValues {
     pub warning_text_color: Hsla,
     pub danger_text_color: Hsla,
     pub success_text_color: Hsla,
+
+    pub btn_1_text_color: Hsla,
+    pub btn_1_bg_color: Hsla,
+    pub btn_1_hover_bg_color: Hsla,
 }
 
 pub struct Theme {
@@ -102,6 +106,25 @@ const DARK_THEME: ThemeValues = ThemeValues {
         l: 0.48,
         a: 1.0,
     },
+
+    btn_1_text_color: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 1.0,
+        a: 1.0,
+    },
+    btn_1_bg_color: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 0.0,
+        a: 1.0,
+    },
+    btn_1_hover_bg_color: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 1.0,
+        a: 0.15,
+    },
 };
 
 const LIGHT_THEME: ThemeValues = ThemeValues {
@@ -180,6 +203,25 @@ const LIGHT_THEME: ThemeValues = ThemeValues {
         s: 0.70,
         l: 0.42,
         a: 1.0,
+    },
+
+    btn_1_text_color: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 0.0,
+        a: 1.0,
+    },
+    btn_1_bg_color: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 1.0,
+        a: 1.0,
+    },
+    btn_1_hover_bg_color: Hsla {
+        h: 0.0,
+        s: 0.0,
+        l: 0.0,
+        a: 0.15,
     },
 };
 
