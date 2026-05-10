@@ -5,14 +5,14 @@ use gpui::{
 };
 
 use crate::{
-    gpui_components::{ProgressCircle, SbmcStore, cached_img},
+    gpui_components::{CachedImgStore, ProgressCircle, cached_img},
     theme::{ThemeValues, get_theme},
     types::PathFormatter,
     utilities::human_size,
 };
 
 pub struct Preview {
-    store: SbmcStore,
+    store: CachedImgStore,
     theme: ThemeValues,
     path: PathBuf,
     original_bytes: u64,
@@ -33,7 +33,7 @@ impl Preview {
         let sequence = (index % 2) == 0;
 
         Self {
-            store: SbmcStore::new("./.sbmc_cache"),
+            store: CachedImgStore::new("./img_caches"),
             formatter,
             is_processing,
             original_bytes,

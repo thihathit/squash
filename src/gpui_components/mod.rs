@@ -1,6 +1,6 @@
 #[expect(dead_code)]
 pub mod progress_circle;
-pub mod disk_cache;
+pub mod cached_img;
 
 pub use self::progress_circle::*;
-pub use self::disk_cache::{cached_img, SbmcStore};
+pub use self::cached_img::{cached_img, CachedImgStore};

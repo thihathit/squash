@@ -1,11 +1,11 @@
 use std::{
+    collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     io::{self, Cursor, Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::SystemTime,
 };
-use std::collections::hash_map::DefaultHasher;
 
 use gpui::{
     prelude::FluentBuilder, App, Corners, ElementId, IntoElement, ObjectFit, Refineable,
@@ -20,41 +20,57 @@ use smallvec::SmallVec;
 const CACHE_MAGIC: &[u8; 8] = b"SBMCDKCF";
 const CACHE_VERSION: u32 = 1;
 
-/// A store that writes `.sbmc` cache files into a dedicated directory.
+/// A store that writes decoded-image cache files into a dedicated directory.
 ///
 /// ```ignore
-/// let store = SbmcStore::new("./.sbmc_cache");
+/// let store = CachedImgStore::new("./img_caches");
+/// // or with a custom extension:
+/// let store = CachedImgStore::with_ext("./img_caches", ".sbmc");
+///
 /// // later, in a render method:
 /// cached_img(path, &store)
 /// ```
 #[derive(Clone)]
-pub struct SbmcStore {
+pub struct CachedImgStore {
     cache_dir: PathBuf,
+    ext: String,
 }
 
-impl SbmcStore {
-    /// Create a store. The directory is created (with missing parents) immediately.
+impl CachedImgStore {
+    /// Create a store that writes cache files into `cache_dir`
+    /// using the default extension `.bmc`.
+    ///
+    /// The directory (and any missing parents) is created immediately.
     pub fn new(cache_dir: impl Into<PathBuf>) -> Self {
+        Self::with_ext(cache_dir, ".bmc")
+    }
+
+    /// Create a store with a custom cache-file extension (including the dot).
+    pub fn with_ext(cache_dir: impl Into<PathBuf>, ext: impl Into<String>) -> Self {
         let cache_dir = cache_dir.into();
         let _ = std::fs::create_dir_all(&cache_dir);
-        Self { cache_dir }
+        Self {
+            cache_dir,
+            ext: ext.into(),
+        }
     }
 }
 
 /// Build a [`CachedImg`] whose decoded bytes are cached inside `store`'s directory.
-pub fn cached_img(path: impl Into<PathBuf>, store: &SbmcStore) -> CachedImg {
+pub fn cached_img(path: impl Into<PathBuf>, store: &CachedImgStore) -> CachedImg {
     let path = path.into();
     let id = ElementId::Name(path.to_string_lossy().to_string().into());
     CachedImg {
         id,
         path,
-        cache_dir: Some(store.cache_dir.clone()),
+        cache_dir: store.cache_dir.clone(),
+        ext: store.ext.clone(),
         style: StyleRefinement::default(),
         object_fit: ObjectFit::Contain,
     }
 }
 
-/// A custom image element backed by `.sbmc` disk cache.
+/// A custom image element backed by disk cache.
 /// Produced by [`cached_img`].
 ///
 /// Styling, object-fit, and rounded corners all work the same as `img()`.
@@ -63,7 +79,8 @@ pub fn cached_img(path: impl Into<PathBuf>, store: &SbmcStore) -> CachedImg {
 pub struct CachedImg {
     id: ElementId,
     path: PathBuf,
-    cache_dir: Option<PathBuf>,
+    cache_dir: PathBuf,
+    ext: String,
     style: StyleRefinement,
     object_fit: ObjectFit,
 }
@@ -74,7 +91,6 @@ impl CachedImg {
         self.object_fit = fit;
         self
     }
-
 }
 
 impl Styled for CachedImg {
@@ -102,9 +118,10 @@ impl RenderOnce for CachedImg {
 
             let load_path = self.path.clone();
             let cache_dir = self.cache_dir.clone();
+            let ext = self.ext.clone();
             let shared = state.clone();
             rayon::spawn(move || {
-                let image = load_cached(&load_path, cache_dir.as_deref());
+                let image = load_cached(&load_path, &cache_dir, &ext);
                 let mut guard = shared.lock().unwrap();
                 *guard = match image {
                     Some(img) => LoadState::Loaded(img),
@@ -148,26 +165,17 @@ impl RenderOnce for CachedImg {
 // Loading / decoding / caching
 // ---------------------------------------------------------------------------
 
-fn cache_path_for(source: &Path, cache_dir: Option<&Path>) -> PathBuf {
-    match cache_dir {
-        Some(dir) => {
-            let mut hasher = DefaultHasher::new();
-            source.hash(&mut hasher);
-            let hash = hasher.finish();
-            dir.join(format!("{:016x}.sbmc", hash))
-        }
-        None => {
-            let mut s = source.as_os_str().to_os_string();
-            s.push(".sbmc");
-            PathBuf::from(s)
-        }
-    }
+fn cache_path_for(source: &Path, cache_dir: &Path, ext: &str) -> PathBuf {
+    let mut hasher = DefaultHasher::new();
+    source.hash(&mut hasher);
+    let hash = hasher.finish();
+    cache_dir.join(format!("{:016x}{}", hash, ext))
 }
 
-fn load_cached(path: &Path, cache_dir: Option<&Path>) -> Option<Arc<RenderImage>> {
-    let cache_path = cache_path_for(path, cache_dir);
+fn load_cached(path: &Path, cache_dir: &Path, ext: &str) -> Option<Arc<RenderImage>> {
+    let cache_path = cache_path_for(path, cache_dir, ext);
 
-    // ── try .sbmc disk cache ────────────────────────────────────────
+    // ── try disk cache ───────────────────────────────────────────────
     if cache_path.exists() {
         match read_cache(&cache_path, path) {
             Ok(Some(image)) => return Some(image),
@@ -182,7 +190,7 @@ fn load_cached(path: &Path, cache_dir: Option<&Path>) -> Option<Arc<RenderImage>
         Err(_) => return None,
     };
 
-    // ── write .sbmc ─────────────────────────────────────────────────
+    // ── write cache file ─────────────────────────────────────────────
     if let Err(_) = write_cache(&cache_path, path, &image) {
         // non-fatal
     }
@@ -273,7 +281,7 @@ fn decode_webp(bytes: &[u8]) -> Result<SmallVec<[Frame; 1]>, gpui::ImageCacheErr
 }
 
 // ---------------------------------------------------------------------------
-// .sbmc file format
+// Cache file format
 // ---------------------------------------------------------------------------
 
 fn read_cache(path: &Path, source: &Path) -> Result<Option<Arc<RenderImage>>, gpui::ImageCacheError> {
@@ -283,12 +291,12 @@ fn read_cache(path: &Path, source: &Path) -> Result<Option<Arc<RenderImage>>, gp
     let mut magic = [0u8; 8];
     r.read_exact(&mut magic).map_err(|e| gpui::ImageCacheError::Io(Arc::new(e)))?;
     if &magic != CACHE_MAGIC {
-        return Err(gpui::ImageCacheError::Other(Arc::new(anyhow::anyhow!("bad .sbmc magic"))));
+        return Err(gpui::ImageCacheError::Other(Arc::new(anyhow::anyhow!("bad cache magic"))));
     }
 
     let ver = read_u32_le(&mut r).map_err(|e| gpui::ImageCacheError::Io(Arc::new(e)))?;
     if ver != CACHE_VERSION {
-        return Err(gpui::ImageCacheError::Other(Arc::new(anyhow::anyhow!("unsupported .sbmc version"))));
+        return Err(gpui::ImageCacheError::Other(Arc::new(anyhow::anyhow!("unsupported cache version"))));
     }
 
     let cached_mtime = read_i64_le(&mut r).map_err(|e| gpui::ImageCacheError::Io(Arc::new(e)))?;
@@ -311,7 +319,7 @@ fn read_cache(path: &Path, source: &Path) -> Result<Option<Arc<RenderImage>>, gp
         r.read_exact(&mut pixels).map_err(|e| gpui::ImageCacheError::Io(Arc::new(e)))?;
 
         let buf = ImageBuffer::from_raw(w, h, pixels).ok_or_else(|| {
-            gpui::ImageCacheError::Other(Arc::new(anyhow::anyhow!("bad .sbmc frame: {w}x{h}")))
+            gpui::ImageCacheError::Other(Arc::new(anyhow::anyhow!("bad cache frame: {w}x{h}")))
         })?;
 
         frames.push(Frame::from_parts(buf, 0, 0, Delay::from_numer_denom_ms(dn, dd)));
