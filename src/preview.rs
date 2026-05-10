@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use gpui::{
-    Context, FontWeight, IntoElement, ObjectFit, Render, Window, div, img, prelude::*, svg,
+    Context, FontWeight, IntoElement, ObjectFit, Render, Window, div, prelude::*, svg,
 };
 
 use crate::{
-    gpui_components::ProgressCircle,
+    gpui_components::{ProgressCircle, cached_img},
     theme::{ThemeValues, get_theme},
     types::PathFormatter,
     utilities::human_size,
@@ -107,6 +107,7 @@ impl Render for Preview {
             false => self.theme.file_bg_sequence_1.to_owned(),
             _ => self.theme.transparent.to_owned(),
         };
+
         let src = self.path.to_owned();
 
         let img_bg = self.theme.file_bg_sequence_1.to_owned();
@@ -151,7 +152,11 @@ impl Render for Preview {
             .rounded_md()
             .bg(img_bg)
             .overflow_hidden()
-            .child(img(src).size_full().object_fit(ObjectFit::Cover));
+            .child(
+                cached_img(src)
+                    .size_full()
+                    .object_fit(ObjectFit::Cover),
+            );
 
         let filename = div()
             .id("Preview:filename")
