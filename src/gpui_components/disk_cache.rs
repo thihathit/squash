@@ -1,7 +1,7 @@
 use std::{
     io::{self, Cursor, Read, Write},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::SystemTime,
 };
 
@@ -64,31 +64,56 @@ impl Styled for CachedImg {
     }
 }
 
+enum LoadState {
+    NotStarted,
+    Loading,
+    Loaded(Arc<RenderImage>),
+    Failed,
+}
+
 impl RenderOnce for CachedImg {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let image = window.use_keyed_state(self.id.clone(), cx, |_, _| {
-            load_cached(&self.path)
+        let entity = window.use_keyed_state(self.id.clone(), cx, |_, _| {
+            Arc::new(Mutex::new(LoadState::NotStarted))
         });
+        let state = entity.read(cx).clone();
+
+        if matches!(*state.lock().unwrap(), LoadState::NotStarted) {
+            *state.lock().unwrap() = LoadState::Loading;
+
+            let load_path = self.path.clone();
+            let shared = state.clone();
+            rayon::spawn(move || {
+                let image = load_cached(&load_path);
+                let mut guard = shared.lock().unwrap();
+                *guard = match image {
+                    Some(img) => LoadState::Loaded(img),
+                    None => LoadState::Failed,
+                };
+            });
+        }
 
         let object_fit = self.object_fit;
 
-        let render = image.read(cx).clone();
-
         canvas(
-            move |_bounds, _window, _cx| {
-                (render.clone(), object_fit)
-            },
-            move |bounds, (data, object_fit), window, _cx| {
-                if let Some(ref ri) = data {
-                    let image_size = ri.size(0);
-                    let fitted = object_fit.get_bounds(bounds, image_size);
-                    let _ = window.paint_image(
-                        fitted,
-                        Corners::default(),
-                        ri.clone(),
-                        0,
-                        false,
-                    );
+            move |_, _, _| state.clone(),
+            move |bounds, state, window, _cx| {
+                match &*state.lock().unwrap() {
+                    LoadState::Loaded(ri) => {
+                        let image_size = ri.size(0);
+                        let fitted = object_fit.get_bounds(bounds, image_size);
+                        let _ = window.paint_image(
+                            fitted,
+                            Corners::default(),
+                            ri.clone(),
+                            0,
+                            false,
+                        );
+                    }
+                    LoadState::Loading => {
+                        window.refresh();
+                    }
+                    _ => {}
                 }
             },
         )
