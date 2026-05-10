@@ -30,7 +30,7 @@ const CACHE_VERSION: u32 = 1;
 /// // later, in a render method:
 /// cached_img(path, &store)
 /// ```
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CachedImgStore {
     cache_dir: PathBuf,
     ext: String,
@@ -54,7 +54,26 @@ impl CachedImgStore {
             ext: ext.into(),
         }
     }
+
+    /// Delete every cache file in the directory that matches the configured extension.
+    ///
+    /// The directory itself is not removed — new files will be written as images
+    /// are loaded again.
+    pub fn clear(&self) -> std::io::Result<()> {
+        for entry in std::fs::read_dir(&self.cache_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().map_or(false, |e| e == self.ext.trim_start_matches('.')) {
+                std::fs::remove_file(&path)?;
+            }
+        }
+        Ok(())
+    }
 }
+
+// No `Drop` impl — the cache survives the store so that decoded bytes
+// persist across app launches. Call [`CachedImgStore::clear`] explicitly
+// if you need to purge the files.
 
 /// Build a [`CachedImg`] whose decoded bytes are cached inside `store`'s directory.
 pub fn cached_img(path: impl Into<PathBuf>, store: &CachedImgStore) -> CachedImg {

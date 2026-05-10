@@ -1,4 +1,4 @@
-use std::{ops::Range, path::PathBuf};
+use std::{ops::Range, path::PathBuf, sync::Arc};
 
 use gpui::{
     Context, DragMoveEvent, Entity, ExternalPaths, FontWeight, TextAlign, Window, div, prelude::*,
@@ -9,6 +9,7 @@ use futures::channel::oneshot::channel;
 
 use crate::{
     compression::{VALID_EXTENSIONS, compress_image},
+    gpui_components::CachedImgStore,
     preview::{Preview, PreviewData},
     theme::{ThemeValues, get_theme},
     types::PathFormatter,
@@ -25,6 +26,7 @@ struct State {
 }
 
 pub struct DropZone {
+    img_cache: Arc<CachedImgStore>,
     theme: ThemeValues,
     state: State,
 }
@@ -39,7 +41,11 @@ impl DropZone {
             files,
         };
 
-        Self { state, theme }
+        Self {
+            img_cache: Arc::new(CachedImgStore::new("./img_caches")),
+            state,
+            theme,
+        }
     }
 
     fn set_active_drag(&mut self, val: bool, cx: &mut Context<Self>) {
@@ -53,6 +59,7 @@ impl DropZone {
         let preview = cx.new(|new_cx| {
             Preview::new(
                 PreviewData {
+                    img_cache: self.img_cache.clone(),
                     index,
                     is_processing: true,
                     is_error: false,

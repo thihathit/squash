@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use gpui::{Context, FontWeight, IntoElement, ObjectFit, Render, Window, div, prelude::*, svg};
 
@@ -10,6 +10,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct PreviewData {
+    pub img_cache: Arc<CachedImgStore>,
     pub path: PathBuf,
     pub name: String,
     pub original_bytes: u64,
@@ -20,7 +21,7 @@ pub struct PreviewData {
 }
 
 pub struct Preview {
-    img_cache: CachedImgStore,
+    img_cache: Arc<CachedImgStore>,
     theme: ThemeValues,
     name: String,
     path: PathBuf,
@@ -35,9 +36,8 @@ impl Preview {
     pub fn new(data: PreviewData, cx: &mut Context<Self>) -> Self {
         let theme = get_theme(cx);
 
-        let img_cache = CachedImgStore::new("./img_caches");
-
         let PreviewData {
+            img_cache,
             compressed_bytes,
             is_error,
             is_processing,
@@ -109,7 +109,7 @@ impl Render for Preview {
             _ => self.theme.transparent.to_owned(),
         };
 
-        let img_cache = &self.img_cache;
+        let img_cache: &CachedImgStore = self.img_cache.as_ref();
         let src = self.path.to_owned();
 
         let img_bg = self.theme.file_bg_sequence_1.to_owned();
