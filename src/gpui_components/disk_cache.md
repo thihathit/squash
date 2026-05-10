@@ -1,4 +1,4 @@
-# Disk-backed image cache (`cached_img`)
+# Disk-backed image cache (`cached_img` / `SbmcStore`)
 
 Drop-in replacement for `img(path)` that keeps decoded image bytes off the heap
 and frees all RAM on element unmount.
@@ -6,23 +6,30 @@ and frees all RAM on element unmount.
 ## Usage
 
 ```rust
-use crate::gpui_components::cached_img;
+use crate::gpui_components::{SbmcStore, cached_img};
 
-cached_img(path)
+// Create once (e.g. in an entity constructor):
+let store = SbmcStore::new("./.sbmc_cache");
+
+// Use in any render method — pass the store by reference:
+cached_img(src, &store)
     .size_full()
     .object_fit(ObjectFit::Cover)
 ```
 
-Accepts `PathBuf` (or anything `Into<PathBuf>`). Supports `.rounded_*` + `overflow_hidden()`
-on the parent `div()` for corner-radius clipping.
+`.sbmc` files are written inside `./.sbmc_cache/` with hashed filenames
+(e.g. `a1b2c3d4e5f6a7b8.sbmc`). The directory is created automatically.
 
 ## How it works
 
 ### `.sbmc` cache file
 
-When an image is decoded, BGRA pixel data is written to `<source_path>.sbmc`. On
+When an image is decoded, BGRA pixel data is written to a `.sbmc` file. On
 subsequent loads the file is read directly — no decode, no heap allocation of decoded
 bytes. Staleness is checked via source-file mtime.
+
+* **Alongside source**: `<source_path>.sbmc`
+* **Store directory**: `<cache_dir>/<hash-of-source-path>.sbmc`
 
 ### Loading off the main thread
 

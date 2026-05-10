@@ -1,9 +1,11 @@
 use std::{
+    hash::{Hash, Hasher},
     io::{self, Cursor, Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::SystemTime,
 };
+use std::collections::hash_map::DefaultHasher;
 
 use gpui::{
     prelude::FluentBuilder, App, Corners, ElementId, IntoElement, ObjectFit, Refineable,
@@ -18,26 +20,42 @@ use smallvec::SmallVec;
 const CACHE_MAGIC: &[u8; 8] = b"SBMCDKCF";
 const CACHE_VERSION: u32 = 1;
 
-/// Create a cached image element that stores decoded bytes in `.sbmc` files.
+/// A store that writes `.sbmc` cache files into a dedicated directory.
 ///
-/// First load decodes the image and writes BGRA pixel data to `<path>.sbmc`.
-/// Subsequent loads read from that file directly — no decode, no RAM leak.
-///
-/// The decoded [`RenderImage`] is held in element-local state while the element
-/// is mounted. When the element unmounts (e.g. scrolled out of a `uniform_list`),
-/// the state is dropped and all RAM is freed.
-pub fn cached_img(path: impl Into<PathBuf>) -> CachedImg {
+/// ```ignore
+/// let store = SbmcStore::new("./.sbmc_cache");
+/// // later, in a render method:
+/// cached_img(path, &store)
+/// ```
+#[derive(Clone)]
+pub struct SbmcStore {
+    cache_dir: PathBuf,
+}
+
+impl SbmcStore {
+    /// Create a store. The directory is created (with missing parents) immediately.
+    pub fn new(cache_dir: impl Into<PathBuf>) -> Self {
+        let cache_dir = cache_dir.into();
+        let _ = std::fs::create_dir_all(&cache_dir);
+        Self { cache_dir }
+    }
+}
+
+/// Build a [`CachedImg`] whose decoded bytes are cached inside `store`'s directory.
+pub fn cached_img(path: impl Into<PathBuf>, store: &SbmcStore) -> CachedImg {
     let path = path.into();
     let id = ElementId::Name(path.to_string_lossy().to_string().into());
     CachedImg {
         id,
         path,
+        cache_dir: Some(store.cache_dir.clone()),
         style: StyleRefinement::default(),
         object_fit: ObjectFit::Contain,
     }
 }
 
 /// A custom image element backed by `.sbmc` disk cache.
+/// Produced by [`cached_img`].
 ///
 /// Styling, object-fit, and rounded corners all work the same as `img()`.
 /// The difference: decoded bytes are persisted on disk, and RAM is freed on unmount.
@@ -45,6 +63,7 @@ pub fn cached_img(path: impl Into<PathBuf>) -> CachedImg {
 pub struct CachedImg {
     id: ElementId,
     path: PathBuf,
+    cache_dir: Option<PathBuf>,
     style: StyleRefinement,
     object_fit: ObjectFit,
 }
@@ -82,9 +101,10 @@ impl RenderOnce for CachedImg {
             *state.lock().unwrap() = LoadState::Loading;
 
             let load_path = self.path.clone();
+            let cache_dir = self.cache_dir.clone();
             let shared = state.clone();
             rayon::spawn(move || {
-                let image = load_cached(&load_path);
+                let image = load_cached(&load_path, cache_dir.as_deref());
                 let mut guard = shared.lock().unwrap();
                 *guard = match image {
                     Some(img) => LoadState::Loaded(img),
@@ -128,14 +148,24 @@ impl RenderOnce for CachedImg {
 // Loading / decoding / caching
 // ---------------------------------------------------------------------------
 
-fn cache_path_for(source: &Path) -> PathBuf {
-    let mut s = source.as_os_str().to_os_string();
-    s.push(".sbmc");
-    PathBuf::from(s)
+fn cache_path_for(source: &Path, cache_dir: Option<&Path>) -> PathBuf {
+    match cache_dir {
+        Some(dir) => {
+            let mut hasher = DefaultHasher::new();
+            source.hash(&mut hasher);
+            let hash = hasher.finish();
+            dir.join(format!("{:016x}.sbmc", hash))
+        }
+        None => {
+            let mut s = source.as_os_str().to_os_string();
+            s.push(".sbmc");
+            PathBuf::from(s)
+        }
+    }
 }
 
-fn load_cached(path: &Path) -> Option<Arc<RenderImage>> {
-    let cache_path = cache_path_for(path);
+fn load_cached(path: &Path, cache_dir: Option<&Path>) -> Option<Arc<RenderImage>> {
+    let cache_path = cache_path_for(path, cache_dir);
 
     // ── try .sbmc disk cache ────────────────────────────────────────
     if cache_path.exists() {

@@ -5,13 +5,14 @@ use gpui::{
 };
 
 use crate::{
-    gpui_components::{ProgressCircle, cached_img},
+    gpui_components::{ProgressCircle, SbmcStore, cached_img},
     theme::{ThemeValues, get_theme},
     types::PathFormatter,
     utilities::human_size,
 };
 
 pub struct Preview {
+    store: SbmcStore,
     theme: ThemeValues,
     path: PathBuf,
     original_bytes: u64,
@@ -32,6 +33,7 @@ impl Preview {
         let sequence = (index % 2) == 0;
 
         Self {
+            store: SbmcStore::new("./.sbmc_cache"),
             formatter,
             is_processing,
             original_bytes,
@@ -153,7 +155,7 @@ impl Render for Preview {
             .bg(img_bg)
             .overflow_hidden()
             .child(
-                cached_img(src)
+                cached_img(src, &self.store)
                     .size_full()
                     .object_fit(ObjectFit::Cover),
             );
