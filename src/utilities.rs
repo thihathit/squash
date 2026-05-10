@@ -1,5 +1,11 @@
+use dirs::cache_dir;
 use humansize::{DECIMAL, format_size};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use crate::constants::APP_ID;
 
 pub fn human_size(size: u64) -> String {
     format_size(size, DECIMAL)
@@ -19,4 +25,10 @@ pub fn get_random_in_range(min: u64, max: u64) -> u64 {
 
     // 3. Constrain to range
     min + (seed % (max - min + 1))
+}
+
+pub fn get_cache_dir() -> PathBuf {
+    cache_dir()
+        .unwrap_or_else(|| std::env::temp_dir())
+        .join(APP_ID)
 }

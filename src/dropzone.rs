@@ -13,6 +13,7 @@ use crate::{
     preview::{Preview, PreviewData},
     theme::{ThemeValues, get_theme},
     types::PathFormatter,
+    utilities::get_cache_dir,
 };
 
 struct FileInfo {
@@ -49,9 +50,7 @@ impl DropZone {
 
         Self {
             img_cache: Arc::new(CachedImgStore::new(
-                dirs::cache_dir()
-                    .unwrap_or_else(|| std::env::temp_dir())
-                    .join("squash"),
+                get_cache_dir().join("DropZone:preview"),
             )),
             state,
             theme,
