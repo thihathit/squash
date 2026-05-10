@@ -31,6 +31,12 @@ pub struct DropZone {
     state: State,
 }
 
+impl Drop for DropZone {
+    fn drop(&mut self) {
+        let _ = self.img_cache.clear();
+    }
+}
+
 impl DropZone {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let theme = get_theme(cx);
