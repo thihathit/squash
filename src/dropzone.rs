@@ -48,7 +48,11 @@ impl DropZone {
         };
 
         Self {
-            img_cache: Arc::new(CachedImgStore::new("./img_caches")),
+            img_cache: Arc::new(CachedImgStore::new(
+                dirs::cache_dir()
+                    .unwrap_or_else(|| std::env::temp_dir())
+                    .join("squash"),
+            )),
             state,
             theme,
         }
