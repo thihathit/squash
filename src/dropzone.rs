@@ -9,8 +9,9 @@ use futures::channel::oneshot::channel;
 
 use crate::{
     compression::{VALID_EXTENSIONS, compress_image},
-    preview::Preview,
+    preview::{Preview, PreviewData},
     theme::{ThemeValues, get_theme},
+    types::PathFormatter,
 };
 
 struct FileInfo {
@@ -48,11 +49,24 @@ impl DropZone {
     }
 
     fn push_file(&mut self, path: &PathBuf, index: usize, cx: &mut Context<Self>) {
-        let preview = cx.new(|new_cx| Preview::new(new_cx, path.to_owned(), true, index));
+        let formatter = PathFormatter::new(path.to_owned());
+        let preview = cx.new(|new_cx| {
+            Preview::new(
+                PreviewData {
+                    index,
+                    is_processing: true,
+                    is_error: false,
+                    path: path.to_owned(),
+                    name: formatter.file_name(),
+                    compressed_bytes: formatter.file_bytes(),
+                    original_bytes: formatter.file_bytes(),
+                },
+                new_cx,
+            )
+        });
 
+        let preview_entity = preview.to_owned();
         let image_path = path.to_owned();
-
-        let preview_entity = preview.clone();
 
         let thread = cx.spawn(async move |_this, thread_cx| {
             // We use a "oneshot" channel to bridge the Thread -> Async gap
@@ -70,25 +84,26 @@ impl DropZone {
 
             match result {
                 Ok(Some(byte)) => preview_entity.update(thread_cx, |this, this_cx| {
-                    this.set_compressed_bytes(byte, this_cx);
-                    this.set_processing(false, this_cx)
+                    this.compressed_bytes = byte;
+                    this.is_processing = false;
+                    this_cx.notify();
                 }),
                 // Accounts for:
                 // - thread crash
                 // - failed to compress
-                _ => {
-                    preview_entity.update(thread_cx, |this, this_cx| this.set_error(true, this_cx))
-                }
+                _ => preview_entity.update(thread_cx, |this, this_cx| {
+                    this.is_error = true;
+                    this_cx.notify();
+                }),
             }
         });
+
         thread.detach();
 
-        let file = FileInfo {
+        self.state.files.push(FileInfo {
             path: path.clone(),
             preview,
-        };
-
-        self.state.files.push(file);
+        });
         cx.notify();
     }
 

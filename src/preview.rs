@@ -1,71 +1,69 @@
 use std::path::PathBuf;
 
-use gpui::{
-    Context, FontWeight, IntoElement, ObjectFit, Render, Window, div, prelude::*, svg,
-};
+use gpui::{Context, FontWeight, IntoElement, ObjectFit, Render, Window, div, prelude::*, svg};
 
 use crate::{
     gpui_components::{CachedImgStore, ProgressCircle, cached_img},
     theme::{ThemeValues, get_theme},
-    types::PathFormatter,
     utilities::human_size,
 };
 
+#[derive(Debug, Clone)]
+pub struct PreviewData {
+    pub path: PathBuf,
+    pub name: String,
+    pub original_bytes: u64,
+    pub compressed_bytes: u64,
+    pub index: usize,
+    pub is_processing: bool,
+    pub is_error: bool,
+}
+
 pub struct Preview {
-    store: CachedImgStore,
+    img_cache: CachedImgStore,
     theme: ThemeValues,
+    name: String,
     path: PathBuf,
     original_bytes: u64,
-    compressed_bytes: u64,
     sequence: bool,
-    is_processing: bool,
-    is_error: bool,
-
-    pub formatter: PathFormatter,
+    pub compressed_bytes: u64,
+    pub is_processing: bool,
+    pub is_error: bool,
 }
 
 impl Preview {
-    pub fn new(cx: &mut Context<Self>, path: PathBuf, is_processing: bool, index: usize) -> Self {
+    pub fn new(data: PreviewData, cx: &mut Context<Self>) -> Self {
         let theme = get_theme(cx);
-        let formatter = PathFormatter::new(path.to_owned());
-        let original_bytes = formatter.file_bytes();
-        let compressed_bytes = original_bytes.to_owned();
+
+        let img_cache = CachedImgStore::new("./img_caches");
+
+        let PreviewData {
+            compressed_bytes,
+            is_error,
+            is_processing,
+            original_bytes,
+            path,
+            index,
+            name,
+        } = data;
+
         let sequence = (index % 2) == 0;
 
         Self {
-            store: CachedImgStore::new("./img_caches"),
-            formatter,
+            img_cache,
             is_processing,
             original_bytes,
             compressed_bytes,
             sequence,
             theme,
             path,
-            is_error: false,
+            is_error,
+            name,
         }
     }
 
-    pub fn set_processing(&mut self, val: bool, cx: &mut Context<Self>) {
-        self.is_processing = val;
-        cx.notify();
-    }
-
-    pub fn set_error(&mut self, val: bool, cx: &mut Context<Self>) {
-        self.is_error = val;
-        cx.notify();
-    }
-
-    pub fn set_compressed_bytes(&mut self, val: u64, cx: &mut Context<Self>) {
-        self.compressed_bytes = val;
-        cx.notify();
-    }
-
-    fn name(&self) -> String {
-        self.formatter.file_name()
-    }
-
     fn original_size(&self) -> String {
-        self.formatter.size()
+        human_size(self.original_bytes).to_uppercase()
     }
 
     fn compressed_size(&self) -> String {
@@ -96,7 +94,7 @@ impl Preview {
 
 impl Render for Preview {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let name = self.name();
+        let name = self.name.to_owned();
 
         let is_error = self.is_error.to_owned();
         let is_processing = self.is_processing.to_owned();
@@ -105,11 +103,13 @@ impl Render for Preview {
         let size = original_size.clone();
         let compressed_size = self.compressed_size();
         let savings = self.savings();
+
         let bg = match self.sequence {
             false => self.theme.file_bg_sequence_1.to_owned(),
             _ => self.theme.transparent.to_owned(),
         };
 
+        let img_cache = &self.img_cache;
         let src = self.path.to_owned();
 
         let img_bg = self.theme.file_bg_sequence_1.to_owned();
@@ -155,7 +155,7 @@ impl Render for Preview {
             .bg(img_bg)
             .overflow_hidden()
             .child(
-                cached_img(src, &self.store)
+                cached_img(src, img_cache)
                     .size_full()
                     .object_fit(ObjectFit::Cover),
             );
