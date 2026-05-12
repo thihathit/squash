@@ -3,17 +3,14 @@ channel = "1.95.9"
 
 [package]
 name = "squash"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2024"
 description = "A desktop image compression app."
 authors = ["Thiha <git@thiha.dev>"]
 repository = "https://github.com/thihathit/squash"
 
-[package.metadata.wix]
-upgrade-guid = "1FA86276-488C-44CA-AC1C-8280AF6E54FB"
-path-guid = "27AFC2B0-181E-4AC6-9A1C-E47CA0239211"
-license = false
-eula = false
+[build-dependencies]
+embed-resource = "3"
 
 [dependencies]
 anyhow = "1.0.102"
@@ -28,8 +25,3 @@ libcaesium = { version = "0.20.3", default-features = false, features = ["jpg", 
 dirs = "6.0"
 rayon = "1.10"
 smallvec = "1.15.1"
-
-# The profile that 'dist' will build with
-[profile.dist]
-inherits = "release"
-lto = "thin"

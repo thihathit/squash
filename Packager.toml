@@ -1,0 +1,20 @@
+name = "squash"
+product-name = "Squash"
+identifier = "dev.thiha.squash"
+version = "0.0.0"
+out-dir = "./target/release"
+before-packaging-command = "cargo build --release"
+icons = [
+    "public/icons/32x32.png",
+    "public/icons/64x64.png",
+    "public/icons/128x128.png",
+    "public/icons/128x128@2x.png",
+    "public/icons/icon.icns",
+    "public/icons/icon.ico",
+    "public/icons/icon.png",
+]
+
+[[binaries]]
+# This MUST match the name of the file produced by 'cargo build'
+path = "squash"
+main = true
