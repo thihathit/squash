@@ -76,12 +76,16 @@ jobs:
       - name: Build & Package
         run: cargo packager --release
 
-      - name: "Upload: .app"
+      - name: "Zip .app bundle"
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: ditto -c -k --sequesterRsrc target/release/Squash.app target/release/Squash.app.zip
+
+      - name: "Upload: .app.zip"
         if: ${{ matrix.os == 'macos-latest' }}
         uses: actions/upload-artifact@v4
         with:
-          name: Squash.app
-          path: target/release/Squash.app
+          name: Squash.app.zip
+          path: target/release/Squash.app.zip
 
       - name: "Upload: aarch64.dmg"
         if: ${{ matrix.os == 'macos-latest' }}
